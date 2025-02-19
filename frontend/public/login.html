@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label for="email">Email:</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="Enter your registered EmailID"
+          required
+        />
+        <label for="password">Password:</label>
+        <div class="password-container">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter Password"
+            required
+          />
+        </div>
+        <button type="submit">Login</button>
+      </form>
+      <p id="error-message" class="error-message"></p>
+      <p>Don't have an account? <a href="register.html">Register</a></p>
+    </div>
+    <!-- <footer class="footer">©️ Shabnam</footer> -->
+    <script>
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+          const loginData = {
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value.trim(),
+          };
+          console.log("Submitting Login Data:", loginData);
+          try {
+            const response = await fetch(
+              "http://localhost:8080/api/auth/login",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(loginData),
+              }
+            );
+            console.log("Raw Response:", response); // Debugging
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error("Server Error Response:", errorData);
+              document.getElementById("error-message").textContent =
+                errorData.error || "Login failed!";
+              return;
+            }
+
+            const data = await response.json();
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user_id", data.user_id);
+            localStorage.setItem("username", data.username);
+
+            console.log("Login successful, redirecting...");
+            window.location.href = "contacts.html";
+          } catch (error) {
+            console.error("Login Error:", error);
+            document.getElementById("error-message").textContent =
+              "Network error. Try again.";
+          }
+        });
+    </script>
+  </body>
+</html>

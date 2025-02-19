@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minimalist Chat App</title>
+    <style>
+      /* Google Font */
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap");
+
+      :root {
+        --bg-dark: #121212;
+        --text-dark: #ffffff;
+        --btn-dark: #1e88e5;
+        --btn-hover-dark: #1565c0;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        background-color: var(--bg-dark);
+        color: var(--text-dark);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        text-align: center;
+      }
+
+      /* Container */
+      .container {
+        width: 100%;
+        max-width: 500px;
+        padding: 30px;
+      }
+
+      /* Header */
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+      }
+
+      p {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+      }
+
+      /* Buttons */
+      nav {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+      }
+
+      .btn {
+        padding: 12px 20px;
+        font-size: 1rem;
+        text-decoration: none;
+        color: white;
+        background-color: var(--btn-dark);
+        border-radius: 8px;
+        transition: background 0.3s ease;
+      }
+
+      .btn:hover {
+        background-color: var(--btn-hover-dark);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Welcome to ChatX</h1>
+        <p>Fast, secure, and private messaging.</p>
+      </header>
+      <nav>
+        <a href="public/login.html" class="btn">Login</a>
+        <a href="public/register.html" class="btn">Register</a>
+        <a href="public/contacts.html" class="btn">My Contacts</a>
+      </nav>
+    </div>
+  </body>
+</html>

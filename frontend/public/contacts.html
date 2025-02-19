@@ -1,0 +1,549 @@
+<!-- 
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contacts</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+
+      .contacts-container {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        width: 320px;
+      }
+
+      h2 {
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .contacts-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .contact-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+
+      .contact-item:hover {
+        background: #e0e0e0;
+      }
+
+      .profile-pic {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+      }
+
+      .contact-name {
+        font-size: 16px;
+        font-weight: bold;
+      }
+
+      .add-contact-btn {
+        margin-top: 15px;
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background: #007bff;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .add-contact-btn:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="contacts-container">
+      <h2>Contacts</h2>
+      <div id="contactsList" class="contacts-list"></div>
+      <button
+        class="add-contact-btn"
+        onclick="window.location.href='add_contact.html'"
+      >
+        ➕ Add New Contact
+      </button>
+    </div>
+
+    <script>
+      function getItemWithExpiry(key) {
+        const itemStr = localStorage.getItem(key);
+        if (!itemStr) return null;
+        try {
+          const item = JSON.parse(itemStr);
+          if (item.expiry) {
+            const now = new Date();
+            if (now.getTime() > item.expiry) {
+              localStorage.removeItem(key);
+              return null;
+            }
+            return item.value;
+          }
+          return itemStr; // Return as a normal string if no expiry is found
+        } catch (error) {
+          return itemStr; // In case token was stored as a simple string
+        }
+      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        const token = getItemWithExpiry("token");
+        if (!token) {
+          alert("Unauthorized! Please login.");
+          window.location.href = "login.html";
+          return;
+        }
+
+        try {
+          const response = await fetch("http://localhost:8080/api/contacts", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `${token}`,
+            },
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || "Failed to fetch contacts");
+          }
+          const contacts = result.contacts || []; // Ensure contacts is an array
+          const contactsList = document.getElementById("contactsList");
+          contactsList.innerHTML = "";
+          if (contacts.length === 0) {
+            contactsList.innerHTML =
+              "<p>No contacts found. Add a new contact below.</p>";
+          } else {
+            contacts.forEach((contact) => {
+              const contactItem = document.createElement("div");
+              contactItem.classList.add("contact-item");
+
+              contactItem.innerHTML = `
+          <img src="${
+            contact.profile_pic || "default-avatar.png"
+          }" alt="Profile Pic" class="profile-pic">
+          <span class="contact-name">${contact.username}</span>
+          <button class="chat-btn" data-id="${contact._id}">💬 Chat</button>
+        `;
+
+              contactsList.appendChild(contactItem);
+            });
+            document.querySelectorAll(".chat-btn").forEach((button) => {
+              button.addEventListener("click", function () {
+                const receiverId = this.getAttribute("data-id");
+                localStorage.setItem("receiverId", receiverId);
+                window.location.href = "chat.html"; // Redirect to chat page
+              });
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching contacts:", error);
+          alert("Error fetching contacts. Please try again.");
+        }
+      });
+    </script>
+  </body>
+</html>
+ -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contacts</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      body {
+        background-color: #f4f4f4;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        height: 100vh;
+        padding-top: 20px;
+      }
+      .contacts-container {
+        width: 90%;
+        max-width: 500px;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 2px 8px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        margin-top: 40px;
+      }
+      h2 {
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .contacts-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 10px;
+      }
+      .chat-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 0.3s;
+        margin-right: 10px;
+      }
+      .chat-btn:hover {
+        background: #0056b3;
+      }
+      .contact-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f8f9fa;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        transition: all 0.3s ease-in-out;
+        position: relative;
+      }
+      .contact-item:hover {
+        background: #e9ecef;
+        transform: scale(1.02);
+      }
+      .contact-name {
+        font-size: 16px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .new-indicator {
+        background: #28a746af;
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        padding: 3px 6px;
+        border-radius: 12px;
+      }
+
+      .delete-btn {
+        background: rgb(217, 217, 217);
+        color: rgb(227, 10, 10);
+        border: none;
+        padding: 6px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+
+      .delete-btn:hover {
+        background: #cc0000;
+      }
+
+      .add-contact-btn {
+        margin-top: 15px;
+        width: 100%;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        transition: 0.3s;
+      }
+
+      .add-contact-btn:hover {
+        background: #0056b3;
+      }
+
+      .empty-message {
+        color: #777;
+        font-size: 16px;
+        margin-top: 15px;
+      }
+      .logoutButton {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000; /* Ensures it stays above other elements */
+      }
+      .logoutButton:hover {
+        background: #2e5987;
+      }
+      .goBackButton {
+        position: fixed;
+        left: 10px;
+        top: 60px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000; /* Ensures it stays above other elements */
+      }
+      .goBackButton:hover {
+        background: #2e5987;
+      }
+      .top-nav {
+        width: 100%;
+        padding: 10px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+      }
+      .unread-users-button {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border-radius: 5px;
+        font-size: 14px;
+        text-decoration: none;
+        transition: 0.3s;
+      }
+      .unread-users-button:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-nav">
+      <a href="unread_users.html" class="unread-users-button"
+        >Unread Messages</a
+      >
+    </div>
+
+    <button class="logoutButton" onclick="logOut()">Log Out</button>
+    <button class="goBackButton" onclick="goBack()">HomePage</button>
+
+    <div class="contacts-container">
+      <h2>Your Contacts</h2>
+      <ul id="contactsList" class="contacts-list"></ul>
+      <p id="emptyMessage" class="empty-message">No contacts found.</p>
+      <a href="add_contact.html" class="add-contact-btn">➕ Add Contact</a>
+    </div>
+    <script>
+      // document
+      //   .getElementById("logoutButton")
+      //   .addEventListener("click", function () {
+      //     localStorage.removeItem("token");
+      //     localStorage.removeItem("user_id");
+      //     localStorage.removeItem("username");
+      //     window.location.href = "login.html";
+      //   });
+      // Load chat history on page load
+
+      function logOut() {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("username");
+        window.location.href = "login.html";
+      }
+      function goBack() {
+        window.location.href = "../index.html";
+      }
+
+      async function openChat(contactId) {
+        if (!contactId) {
+          console.error("Error: contactId is undefined");
+          alert("Error opening chat. Contact ID is missing.");
+          return;
+        }
+        localStorage.setItem("receiver_id", contactId);
+        try {
+          const response = await fetch(
+            `http://localhost:8080/api/chat/user?id=${encodeURIComponent(
+              contactId
+            )}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          const data = await response.json();
+          console.log(data.receiver);
+          if (response.ok) {
+            localStorage.setItem("receiver_name", data.receiver); // Store receiver's name
+          } else {
+            console.error("Error fetching receiver name:", data.error);
+            alert("Error fetching receiver's name. Please try again.");
+            localStorage.setItem("receiver_name", "Unknown"); // Fallback if not found]
+          }
+        } catch (error) {
+          alert(
+            error.message || "Error fetching receiver's name. Please try again!"
+          );
+          localStorage.setItem("receiver_name", "Unknown");
+          window.location.reload();
+        }
+        window.location.href = "chat.html"; // Redirect to chat window
+        // Call loadChatHistory after a small delay to ensure the new page is loaded
+
+        setTimeout(() => {
+          const senderId = localStorage.getItem("user_id"); // Current user (logged-in)
+          const receiverId = localStorage.getItem("receiver_id"); // Contact ID
+
+          if (senderId && receiverId) {
+            loadChatHistory(senderId, receiverId);
+          } else {
+            console.error("Sender or Receiver ID missing.");
+          }
+        }, 500);
+      }
+      async function deleteContact(contactId) {
+        if (!contactId) {
+          console.error("Error: contactId is undefined in deleteContact");
+          alert("Error: Contact ID is missing.");
+          return;
+        }
+        if (!confirm("Are you sure you want to delete this contact?")) return;
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("Unauthorized! Please login.");
+          window.location.href = "login.html";
+          return;
+        }
+        try {
+          const response = await fetch(
+            `http://localhost:8080/api/chat/contacts?contactId=${encodeURIComponent(
+              contactId
+            )}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token,
+              },
+            }
+          );
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || "Failed to delete contact.");
+          }
+          alert(data.message || "Contact deleted successfully!");
+          window.location.reload();
+        } catch (error) {
+          console.error("Error deleting contact:", error);
+          alert(error.message);
+        }
+      }
+      async function fetchContacts() {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("Unauthorized! Please login.");
+          window.location.href = "login.html";
+          return;
+        }
+        try {
+          const response = await fetch(
+            "http://localhost:8080/api/chat/contacts",
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch contacts.");
+          }
+
+          const data = await response.json();
+
+          const contactsList = document.getElementById("contactsList");
+          const emptyMessage = document.getElementById("emptyMessage");
+
+          if (!contactsList || !emptyMessage) return; // Prevents potential null errors
+
+          if (data.contacts.length > 0) {
+            emptyMessage.style.display = "none";
+            contactsList.innerHTML = "";
+
+            data.contacts.forEach((contact) => {
+              console.log("Contact:", contact); // Debugging line
+              if (!contact.id) {
+                console.error("Error: contact missing id field", contact);
+                return; // Skip if ID is missing
+              }
+
+              const li = document.createElement("li");
+              li.id = contact.id;
+              li.className = "contact-item";
+              li.innerHTML = `
+                <button class="chat-btn" onclick="openChat('${
+                  contact.id
+                }')">💬</button>
+                <span class="contact-name">${
+                  contact.username || "Unknown Contact"
+                }</span>
+                <button class="delete-btn" onclick="deleteContact('${encodeURIComponent(
+                  contact.id
+                )}')">❌</button>
+              `;
+              contactsList.appendChild(li);
+            });
+          } else {
+            emptyMessage.style.display = "block";
+          }
+        } catch (error) {
+          console.error("Error fetching contacts:", error);
+          alert(error.message);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", fetchContacts);
+    </script>
+  </body>
+</html>

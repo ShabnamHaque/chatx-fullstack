@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Window</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        background-color: rgba(97, 97, 97, 0.6);
+      }
+      .chat-container {
+        width: 850px;
+        height: 650px;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        background: #d2d2d2e6;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin: auto;
+      }
+      .chat-header {
+        background: #4d6f94;
+        color: white;
+        text-align: center;
+        padding: 10px;
+        font-size: 16px;
+      }
+      .back-button {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000;
+      }
+      .back-button:hover {
+        background: #2e5987;
+      }
+      .chat-messages {
+        flex-grow: 1;
+        padding: 10px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      .chat-input {
+        display: flex;
+        padding: 10px;
+        background: #fff;
+        border-top: 1px solid #ddd;
+      }
+      .chat-input input {
+        flex-grow: 3;
+        padding: 8px;
+        height: 50%;
+        background-color: #12549a38;
+        width: 600%;
+        border: 0.5px dodgerblue #120404;
+        border-radius: 5px;
+        outline: rgba(0, 0, 0, 0.082);
+      }
+      .chat-input button {
+        background: #4d6f94;
+        color: white;
+        border: none;
+        padding: 8px 18px;
+        margin-left: 300px;
+        width: 60%;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .toggle-label {
+        font-size: 14px;
+        font-family: Arial, Helvetica, sans-serif;
+        color: white;
+      }
+      .toggle-button {
+        width: 50px;
+        height: 25px;
+        border-radius: 15px;
+        background: grey;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      .toggle-button::before {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        top: 2.5px;
+        left: 3px;
+        transition: transform 0.3s;
+      }
+      .toggle-button.active {
+        background: #193654;
+      }
+      .toggle-button.active::before {
+        transform: translateX(25px);
+      }
+      .chat-input button:hover {
+        background: #014791;
+      }
+      .status {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        font-size: 18px;
+        color: grey;
+      }
+      .message.read::after {
+        content: "✔✔"; /* Double tick for read */
+        color: rgb(208, 205, 205); /* Green for read messages */
+        font-size: 10px;
+        margin-left: 10px;
+      }
+      .message.unread::after {
+        content: "✔"; /* Single tick for unread */
+        color: rgb(230, 226, 226); /* Orange for unread messages */
+        font-size: 10px;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="back-button" onclick="goBack()">← Back to Contacts</button>
+    <div class="chat-container">
+      <header class="chat-header">
+        <h2 id="receiverName"></h2>
+        <div class="toggle-container">
+          <span class="toggle-label">Disappearing Messages:</span>
+          <div class="toggle-button" id="toggleButton"></div>
+        </div>
+      </header>
+      <div class="chat-messages" id="chatMessages">
+        <!-- Messages will be appended here dynamically -->
+      </div>
+      <div class="chat-input">
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="Type your message..."
+        />
+        <button id="sendButton">Send</button>
+      </div>
+    </div>
+    <script>
+      function goBack() {
+        localStorage.removeItem("receiver_id");
+        localStorage.removeItem("receiver_name");
+        window.location.href = "contacts.html";
+      }
+      const toggleDisappearing = document.getElementById("toggleButton");
+      let disappearingMessages = false; // Default: OFF
+      toggleDisappearing.addEventListener("click", () => {
+        disappearingMessages = !disappearingMessages;
+        toggleButton.classList.toggle("active", disappearingMessages);
+        localStorage.setItem("disappearing", disappearingMessages);
+
+        console.log("Disappearing Messages:", disappearingMessages);
+      });
+      // window.onload = () => {
+      //   disappearingMessages = localStorage.getItem("disappearing") === "true";
+      //   if (disappearingMessages) toggleButton.classList.add("active");
+      // };
+      // Load last toggle state or set default OFF
+      window.onload = () => {
+        let storedValue = localStorage.getItem("disappearing");
+        if (storedValue === null) {
+          localStorage.setItem("disappearing", "false"); // Set default to OFF
+          disappearingMessages = false;
+        } else {
+          //disappearingMessages = storedValue === "true";
+        }
+        if (disappearingMessages) toggleDisappearing.classList.add("active");
+      };
+    </script>
+    <script src="assets/chat.js"></script>
+  </body>
+</html>

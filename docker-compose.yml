@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: ./backend
+    container_name: chat_backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+    environment:
+      MONGO_URI: ${MONGO_URI}
+    env_file:
+      - ./backend/.env  # ✅ Load backend environment variables
+   
+
+  frontend:
+    build: ./frontend
+    container_name: chat_frontend
+    ports:
+      - "5500:80"
+    depends_on:
+      - backend
+
+  mongo:
+    image: mongo:latest
+    container_name: chat_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db  # Ensure volume is used correctly
+
+volumes:
+  mongo_data: {}  # ✅ Correctly declare the volume

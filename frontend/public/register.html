@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <div class="register-container">
+      <h2>Register</h2>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required />
+        </div>
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+        <div class="form-group">
+          <label for="profile_pic">Upload Profile Picture:</label>
+          <input
+            id="profile_pic"
+            name="profile_pic"
+            placeholder="Insert a Gdrive public URL"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+        <button type="submit">Register</button>
+      </form>
+
+      <p id="error-message" class="error-message"></p>
+      <p>Already have an account? <a href="login.html">Login here</a></p>
+    </div>
+    <script>
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+
+          const userData = {
+            username: document.getElementById("username").value,
+            email: document.getElementById("email").value,
+            profile_pic: document.getElementById("profile_pic").value,
+            password: document.getElementById("password").value,
+          };
+
+          //console.log("Submitting Register Data:", userData); // Debugging
+
+          try {
+            const response = await fetch(
+              "http://localhost:8080/api/auth/register",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(userData),
+              }
+            );
+            const data = await response.json();
+            console.log("API Response:", data);
+            if (response.ok) {
+              alert("Registration Successful! Please log in.");
+              window.location.href = "login.html"; // Redirect to login page
+            } else {
+              document.getElementById("error-message").textContent =
+                data.error || "Registration failed!";
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            document.getElementById("error-message").textContent =
+              "Something went wrong. Please try again.";
+          }
+        });
+    </script>
+  </body>
+</html>
+
+<!--
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyACAc5Lp7yT00q1hBd_bc7UlKcV8W4RCdk",
+    authDomain: "chatapp-6c210.firebaseapp.com",
+    projectId: "chatapp-6c210",
+    storageBucket: "chatapp-6c210.firebasestorage.app",
+    messagingSenderId: "544821311909",
+    appId: "1:544821311909:web:2f0827720e01782d91d04c",
+    measurementId: "G-HC16S4VQQ5"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+-->
