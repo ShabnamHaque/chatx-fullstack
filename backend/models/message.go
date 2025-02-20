@@ -14,5 +14,5 @@ type Message struct {
 	Disappearing bool               `json:"disappearing,omitempty" bson:"disappearing,omitempty"`
 	Timestamp    time.Time          `json:"timestamp" bson:"timestamp"`
 	ExpiresAt    time.Time          `json:"expires_at,omitempty" bson:"expires_at,omitempty"`
-	Unread       bool               `json:"unread" bson:"unread"`
+	Unread       bool               `bson:"unread"`
 }
