@@ -5,7 +5,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
 type Message struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
 	SenderID     string             `json:"sender_id" bson:"sender_id"`
