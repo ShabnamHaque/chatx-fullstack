@@ -92,6 +92,7 @@ func SaveMessageToDB(message models.Message) error {
 		"timestamp":    message.Timestamp,
 		"disappearing": message.Disappearing,
 		"unread":       true,
+	//	"type":         "text",
 	}
 	if message.Disappearing {
 		doc["expires_at"] = time.Now().Add(24 * time.Hour) // Message expires in 24 hours
