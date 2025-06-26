@@ -83,6 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function appendMessage(message) {
     console.log("Appending message:", message);
+
     if (!message || !message.Content) {
       console.error("⚠️ Message content is missing!", message);
       return; // Stop execution if there's no content
@@ -147,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("chatMessages").innerHTML = ""; // Clear old messages
         data.messages.forEach((msg) => {
           // appendMessage(msg, msg.sender_id === senderId);
-          appendMessage(msg, msg.sender_id);
+          appendMessage(msg);
         });
       }
     } catch (error) {

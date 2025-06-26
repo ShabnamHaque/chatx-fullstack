@@ -1,3 +1,4 @@
+
 services:
   backend:
     build: ./backend
@@ -8,9 +9,9 @@ services:
       - mongo
     environment:
       MONGO_URI: ${MONGO_URI}
+      PORT: 8080
     env_file:
-      - ./backend/.env  # ✅ Load backend environment variables
-   
+      - ./backend/.env  # ✅ Load environment variables
 
   frontend:
     build: ./frontend
@@ -26,8 +27,12 @@ services:
     restart: always
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
-      - mongo_data:/data/db  # Ensure volume is used correctly
+      - mongo_data:/data/db  # ✅ Ensure volume is used correctly
 
 volumes:
-  mongo_data: {}  # ✅ Correctly declare the volume
+  mongo_data:
+    driver: azure_file  # ✅ Use Azure Files instead of local volumes
