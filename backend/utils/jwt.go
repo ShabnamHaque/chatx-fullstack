@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,10 +26,13 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID string) (string, error) {
+// primitive.ObjectID is not JSON serializable
+// JWT payloads are encoded as JSON. ObjectID is a binary type and will not serialize cleanly to JSON.
+// Storing .Hex() (which is a 24-char hex string) is both safe and interoperable.
+func GenerateToken(userID primitive.ObjectID) (string, error) {
 	expirationTime := time.Now().Add(48 * time.Hour) // Token expires in 48 hours
 	claims := &Claims{
-		UserID: userID,
+		UserID: userID.Hex(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},

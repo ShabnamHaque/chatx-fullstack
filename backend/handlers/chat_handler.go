@@ -27,14 +27,6 @@ func InitChatHandler() {
 		//	receiver_id := s.Request.URL.Query().Get("receiver_id")
 		sender_id := s.Request.URL.Query().Get("sender_id") //just store who is connected
 
-		// if receiver_id == "" {
-		// 	log.Println("⚠️ Connection without receiver_id, closing.")
-		// 	s.Close()
-		// 	return
-		// }
-
-		// Store userID in WebSocket session
-		//s.Set("receiver_id", receiver_id)
 		s.Set("sender_id", sender_id) //how the ws conn be uniquely identified.
 		log.Printf("🟢 WebSocket connected | Sender: %s", sender_id)
 	})
@@ -64,15 +56,7 @@ func HandleWebSocket(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "senderID is required"})
 		return
 	}
-	// m.Sessions().Range(func(_, value interface{}) bool { //prevent duplicate sessions between two users
-	// 	existingSession := value.(*melody.Session)
-	// 	existingUserID, exists := existingSession.Get("userID")
-	// 	if exists && existingUserID == userID {
-	// 		log.Printf("⚠️ Duplicate WebSocket detected for UserID: %s. Closing old session.", userID)
-	// 		existingSession.Close() // Close the existing WebSocket session for the user
-	// 	}
-	// 	return true
-	// })
+
 	err := m.HandleRequest(c.Writer, c.Request)
 	if err != nil {
 		log.Println("❌ WebSocket connection error:", err)
@@ -100,7 +84,12 @@ func InitMessageHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
-	if claims.UserID != message.SenderID {
+	userID_primitive, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error parsing str to objectID"})
+		return
+	}
+	if userID_primitive != message.SenderID {
 		log.Printf("⚠️ Unauthorized sender attempt. JWT UserID: %s | SenderID in request: %s", claims.UserID, message.SenderID)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized sender"})
 		return
@@ -128,40 +117,15 @@ func InitMessageHandler(c *gin.Context) {
 		if !exists {
 			return false
 		}
-		return userID == message.SenderID || userID == message.ReceiverID
+		userIDObj, ok := userID.(primitive.ObjectID)
+		if !ok {
+			return false
+		}
+		return userIDObj == message.SenderID || userIDObj == message.ReceiverID
 	})
 	log.Printf("📡 Message broadcasted to Receiver: %s and Sender: %s", message.ReceiverID, message.SenderID)
 	c.JSON(http.StatusOK, gin.H{"message": "Message sent successfully", "isSender": true})
 }
-
-// GetListOfUsersWithUnreadMessages fetches users with whom the authenticated user has unread messages
-/*
-func GetListOfUsersWithUnreadMessages(c *gin.Context) {
-	token, err := utils.ExtractToken(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-	claims, err := utils.ValidateJWT(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-		return
-	}
-	userID := claims.UserID
-	// Find all distinct senders where messages are unread
-	cursor, err := database.Messages.Distinct(context.TODO(), "sender_id", bson.M{
-		"receiver_id": userID, //search for unread distinct by sender_id
-		"unread":      true,
-	})
-	if err != nil {
-		log.Println("Error fetching unread messages:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"users": cursor})
-}
-*/
-
 func GetListOfUsersWithUnreadMessages(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	claims, err := utils.ValidateJWT(token)
@@ -183,8 +147,7 @@ func GetListOfUsersWithUnreadMessages(c *gin.Context) {
 	}
 	defer cursor.Close(context.TODO())
 
-	// Track unique sender IDs (stored as strings in messages)
-	senderMap := make(map[string]bool)
+	senderMap := make(map[primitive.ObjectID]bool)
 	for cursor.Next(context.TODO()) {
 		var msg models.Message
 		if err := cursor.Decode(&msg); err == nil {
@@ -192,16 +155,13 @@ func GetListOfUsersWithUnreadMessages(c *gin.Context) {
 		}
 	}
 
-	// Convert senderMap keys to a list of unique sender ObjectIDs
 	var unreadSenderIDs []primitive.ObjectID
-	for senderID := range senderMap {
-		objID, err := primitive.ObjectIDFromHex(senderID)
-		if err == nil {
-			unreadSenderIDs = append(unreadSenderIDs, objID)
+	for senderID, err := range senderMap {
+		if !err {
+			unreadSenderIDs = append(unreadSenderIDs, senderID)
 		}
 	}
 
-	// Fetch user details of unread senders
 	var unreadUsers []models.User
 	if len(unreadSenderIDs) > 0 {
 		cursor, err := database.Users.Find(context.TODO(), bson.M{"_id": bson.M{"$in": unreadSenderIDs}})
@@ -231,6 +191,44 @@ func GetListOfUsersWithUnreadMessages(c *gin.Context) {
 	}
 	log.Println("unread users ", len(userList))
 	c.JSON(http.StatusOK, gin.H{"users": userList})
+}
+func GetGroupChatHistory(c *gin.Context) {
+	token, err := utils.ExtractToken(c)
+	if err != nil {
+		log.Println("❌ Token extraction failed:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "redirect": "/login"})
+		return
+	}
+	_, err = utils.ValidateJWT(token)
+	if err != nil {
+		log.Println("❌ JWT validation failed:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "redirect": "/login"})
+		return
+	}
+
+	groupIDStr := c.Query("group_id")
+	if groupIDStr == "" {
+		log.Println("⚠️ Missing group_id in request")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "group_id is required"})
+		return
+	}
+
+	groupID, err := primitive.ObjectIDFromHex(groupIDStr)
+
+	if err != nil {
+		log.Println("❌ Invalid group_id format:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group_id"})
+		return
+	}
+	messages, err := database.GetGroupMessages(groupID)
+	if err != nil {
+		log.Println("❌ Failed to fetch group chat history:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve group messages"})
+		return
+	}
+
+	log.Printf("📜 Group chat history retrieved | GroupID: %s", groupIDStr)
+	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
 
 func GetChatHistory(c *gin.Context) { //log.Println("Inside get chat history...")
@@ -264,7 +262,11 @@ func GetChatHistory(c *gin.Context) { //log.Println("Inside get chat history..."
 		log.Println("⚠️ Failed to update read status:", err)
 	}
 	log.Printf("Updated read status btn %s and %s", senderID, receiverID)
-	messagesSlice, err := database.GetMessages(senderID, receiverID)
+
+	senderID_objID, _ := primitive.ObjectIDFromHex(senderID)
+	receiverID_objID, _ := primitive.ObjectIDFromHex(receiverID)
+
+	messagesSlice, err := database.GetMessages(senderID_objID, receiverID_objID)
 	if err != nil {
 		log.Println("❌ Failed to fetch chat history: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve messages"})

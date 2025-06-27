@@ -45,7 +45,7 @@ func RegisterHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving user"})
 		return
 	}
-	token, err := utils.GenerateToken(newUser.ID.Hex())
+	token, err := utils.GenerateToken(newUser.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating token"})
 		return
@@ -76,7 +76,7 @@ func LoginHandler(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
 		return
 	}
-	token, err := utils.GenerateToken(user.ID.Hex())
+	token, err := utils.GenerateToken(user.ID) //passed as primitive ID
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating token"})
 		return

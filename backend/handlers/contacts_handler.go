@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/ShabnamHaque/chatx/backend/database"
 	"github.com/ShabnamHaque/chatx/backend/models"
@@ -17,20 +16,12 @@ import (
 
 func GetUserDetails(c *gin.Context) {
 	receiverID := c.Query("id") // Extract ID from URL
-	usersCollection := database.Users
-	//log.Print("Receiver ID: ", receiverID)
-	receiverObjID, err := primitive.ObjectIDFromHex(receiverID)
+	user, err := database.GetUserByID(receiverID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format", "details": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var user models.User
-	err = usersCollection.FindOne(context.TODO(), bson.M{"_id": receiverObjID}).Decode(&user)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found", "details": err.Error()})
-		return
-	}
-	//log.Print("Receiver name successfully sent: ", user.Username)
+
 	c.JSON(http.StatusOK, gin.H{"receiver": user.Username})
 }
 
@@ -41,6 +32,7 @@ func DeleteContactHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing contactId"})
 		return
 	}
+
 	token := c.GetHeader("Authorization")
 	claims, err := utils.ValidateJWT(token)
 	if err != nil {
@@ -52,33 +44,23 @@ func DeleteContactHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
 		return
 	}
+
 	contactObjID, err := primitive.ObjectIDFromHex(contactID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contact ID format"})
 		return
 	}
-	if userID.IsZero() || contactObjID.IsZero() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing userId or contactId"})
-		return
-	}
-	filter := bson.M{"_id": userID}
-	update := bson.M{"$pull": bson.M{"contacts": contactObjID}}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	usersCollection := database.Users
-	result, err := usersCollection.UpdateOne(ctx, filter, update)
+	err = database.DeleteContactByID(userID, contactObjID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete contact"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if result.ModifiedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found or already removed"})
-		return
-	}
-	log.Print("deleted successfully ", contactID)
-	c.JSON(http.StatusOK, gin.H{"error": nil, "message": "Contact deleted successfully."})
+
+	log.Println("Deleted contact successfully:", contactID)
+	c.JSON(http.StatusOK, gin.H{"message": "Contact deleted successfully."})
 }
 
+// handler to add contact
 func AddContact(c *gin.Context) {
 	var req struct {
 		Email string `json:"email" binding:"required"`
@@ -118,6 +100,7 @@ func AddContact(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user data"})
 		return
 	}
+
 	update := bson.M{"$addToSet": bson.M{"contacts": contactUser.ID}} // Prevents duplicates
 	_, err = database.Users.UpdateOne(context.TODO(), bson.M{"_id": userID}, update)
 	if err != nil {
@@ -166,6 +149,29 @@ func GetContacts(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"contacts": contactList})
+}
+func GetUserByEmail(c *gin.Context) {
+	email := c.Query("email")
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email query parameter is required"})
+		return
+	}
+
+	collection := database.Users // Replace with actual DB and collection names
+
+	var user models.User
+	err := collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		} else {
+			log.Println("❌ Error fetching user by email:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user_id": user.ID.Hex()})
 }
 
 /*

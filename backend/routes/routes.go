@@ -15,6 +15,7 @@ func SetupRoutes(router *gin.Engine) {
 	}
 	chatGroup := router.Group("/api/chat")
 	{
+		chatGroup.GET("/users/by-email", handlers.GetUserByEmail)
 		chatGroup.GET("/unread-users", handlers.GetListOfUsersWithUnreadMessages) // the new unread messages tab
 		chatGroup.GET("/ws", handlers.HandleWebSocket)                            // WebSocket session is established. - query param
 		chatGroup.POST("/send", handlers.InitMessageHandler)                      // alt to send texts - also for msg history retrieval
@@ -23,5 +24,12 @@ func SetupRoutes(router *gin.Engine) {
 		chatGroup.GET("/contacts", handlers.GetContacts)                          // get all contacts
 		chatGroup.DELETE("/contacts", handlers.DeleteContactHandler)              // delete a contact - query param
 		chatGroup.GET("/user", handlers.GetUserDetails)                           // get user details - query param
+	}
+	groupChatGrp := router.Group("/api/gc")
+	{
+		groupChatGrp.POST("/create", handlers.CreateGroup)
+		groupChatGrp.GET("/members", handlers.GetMembers)
+		groupChatGrp.POST("/members", handlers.AddMember)
+		groupChatGrp.GET("/history", handlers.GetGroupChatHistory)
 	}
 }

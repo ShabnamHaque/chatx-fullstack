@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ShabnamHaque/chatx/backend/models"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/mgo.v2/bson"
@@ -18,6 +20,7 @@ var client *mongo.Client
 var DB *mongo.Database
 var Users *mongo.Collection
 var Messages *mongo.Collection
+var Groups *mongo.Collection
 
 func ConnectDB() {
 	mongoURI := os.Getenv("MONGO_URI")
@@ -41,6 +44,7 @@ func ConnectDB() {
 	DB = client.Database(dbName)
 	Users = DB.Collection("users")
 	Messages = DB.Collection("messages")
+	Groups = DB.Collection("groups")
 	indexModel := mongo.IndexModel{
 		Keys:    bson.M{"expires_at": 1},
 		Options: options.Index().SetExpireAfterSeconds(0), // TTL Index
@@ -54,8 +58,7 @@ func ConnectDB() {
 func GetCollection(collectionName string) *mongo.Collection {
 	return DB.Collection(collectionName)
 }
-
-func GetMessages(senderID, receiverID string) ([]models.Message, error) {
+func GetMessages(senderID, receiverID primitive.ObjectID) ([]models.Message, error) {
 	var messages []models.Message
 	filter := bson.M{ // Query messages where sender/receiver match
 		"$or": []bson.M{
@@ -92,7 +95,6 @@ func SaveMessageToDB(message models.Message) error {
 		"timestamp":    message.Timestamp,
 		"disappearing": message.Disappearing,
 		"unread":       true,
-	//	"type":         "text",
 	}
 	if message.Disappearing {
 		doc["expires_at"] = time.Now().Add(24 * time.Hour) // Message expires in 24 hours
@@ -100,6 +102,132 @@ func SaveMessageToDB(message models.Message) error {
 	_, err := Messages.InsertOne(context.TODO(), doc)
 	return err
 }
+func GetGroupMessages(groupID primitive.ObjectID) ([]models.Message, error) {
+	filter := bson.M{"group_id": groupID}
+
+	// opts := options.Find().SetSort(bson.D{{"timestamp", 1}})
+
+	cursor, err := Messages.Find(context.Background(), filter)
+	if err != nil {
+		return nil, err
+	}
+	var messages []models.Message
+	if err := cursor.All(context.Background(), &messages); err != nil {
+		return nil, err
+	}
+
+	return messages, nil
+}
+func SaveGroupMessagesToDB(message models.Message) error {
+	doc := bson.M{
+		"sender_id":    message.SenderID,
+		"is_group":     true,
+		"group_id":     message.GroupID,
+		"content":      message.Content,
+		"timestamp":    message.Timestamp,
+		"disappearing": message.Disappearing,
+		"unread":       true,
+	}
+	if message.Disappearing {
+		doc["expires_at"] = time.Now().Add(24 * time.Hour) // Message expires in 24 hours
+	}
+	_, err := Messages.InsertOne(context.TODO(), doc)
+	return err
+}
+func AddMemberToGroup(user models.User, groupID primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	groupColl := Groups
+	userColl := Users
+
+	newMember := models.User{
+		ID:       user.ID,
+		Username: user.Username,
+	}
+
+	// ✅ 1. Add user to group members if not already present
+	groupFilter := bson.M{
+		"_id":         groupID,
+		"members._id": bson.M{"$ne": user.ID}, // not already a member
+	}
+	groupUpdate := bson.M{
+		"$push": bson.M{"members": newMember},
+	}
+
+	groupResult, err := groupColl.UpdateOne(ctx, groupFilter, groupUpdate)
+	if err != nil {
+		return err
+	}
+
+	// Optional: fail if group was not found or user was already a member
+	if groupResult.MatchedCount == 0 {
+		return errors.New("group not found or user already a member")
+	}
+
+	// ✅ 2. Add groupID to user.Groups array if not already added
+	userFilter := bson.M{
+		"_id":    user.ID,
+		"groups": bson.M{"$ne": groupID}, // not already added
+	}
+	userUpdate := bson.M{
+		"$push": bson.M{"groups": groupID},
+	}
+
+	_, err = userColl.UpdateOne(ctx, userFilter, userUpdate)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// deletecontactbyID
+func DeleteContactByID(userID, contactID primitive.ObjectID) error {
+	if userID.IsZero() || contactID.IsZero() {
+		return errors.New("missing user ID or contact ID")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"_id": userID}
+	update := bson.M{"$pull": bson.M{"contacts": contactID}}
+
+	result, err := Users.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount == 0 {
+		return errors.New("contact not found or already removed")
+	}
+
+	return nil
+}
+
+func GetUserByID(id string) (models.User, error) {
+	var user models.User
+
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return user, errors.New("invalid user ID")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = Users.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return user, errors.New("user not found")
+		}
+		return user, err
+	}
+
+	return user, nil
+}
+
 func DisconnectDB() {
 	if client != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

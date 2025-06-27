@@ -15,6 +15,7 @@ type User struct {
 	CreatedAt  time.Time            `bson:"created_at" json:"created_at"`
 	UpdatedAt  time.Time            `bson:"updated_at" json:"updated_at"`
 	Contacts   []primitive.ObjectID `bson:"contacts" json:"contacts"`
+	GroupIDs   []primitive.ObjectID `bson:"group_ids,omitempty"`
 }
 
 type LoginRequest struct {

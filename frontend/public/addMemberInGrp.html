@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Add Member to Group</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f0f4f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .form-container {
+        background: #fff;
+        padding: 30px 40px;
+        border-radius: 10px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+      }
+
+      h2 {
+        margin-bottom: 20px;
+        text-align: center;
+        color: #2c3e50;
+      }
+
+      label {
+        font-size: 14px;
+        color: #333;
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      input[type="email"] {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        background: #2150af;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #4c52cb;
+      }
+
+      .status {
+        margin-top: 15px;
+        text-align: center;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <h2>Add Member to Group</h2>
+      <form id="addMemberForm">
+        <label for="email">User Email</label>
+        <input
+          type="email"
+          id="email"
+          placeholder="Enter user's email"
+          required
+        />
+        <button type="submit">Add to Group</button>
+        <div class="status" id="statusMsg"></div>
+      </form>
+    </div>
+
+    <script>
+      const form = document.getElementById("addMemberForm");
+      const statusMsg = document.getElementById("statusMsg");
+
+      // 👇 Get group_id from query string
+      const urlParams = new URLSearchParams(window.location.search);
+      const groupId = urlParams.get("group_id");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email").value;
+
+        if (!groupId) {
+          showError("❌ Missing group_id in URL");
+          return;
+        }
+
+        try {
+          const userId = await getUserIdByEmail(email);
+          await addUserToGroup(groupId, userId);
+          showSuccess("✅ Member added successfully!");
+        } catch (err) {
+          showError("❌ " + err.message);
+        }
+      });
+
+      // 🔍 Fetch user ID from email
+      async function getUserIdByEmail(email) {
+        const res = await fetch(
+          `http://localhost:8080/api/chat/users/by-email?email=${encodeURIComponent(
+            email
+          )}`
+        );
+        const data = await res.json();
+
+        if (!res.ok || !data.user_id) {
+          throw new Error(data.error || "User not found");
+        }
+
+        return data.user_id;
+      }
+ 
+      async function addUserToGroup(groupId, userId) {
+        const res = await fetch(
+          `http://localhost:8080/api/gc/members?group_id=${groupId}&user_id=${userId}`,
+          {
+            method: "POST",
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to add member");
+        }
+
+        return data;
+      }
+
+      function showSuccess(message) {
+        statusMsg.style.color = "green";
+        statusMsg.textContent = message;
+      }
+
+      function showError(message) {
+        statusMsg.style.color = "red";
+        statusMsg.textContent = message;
+      }
+    </script>
+  </body>
+</html>
