@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var GroupCollection *mongo.Collection = database.Groups
@@ -79,7 +80,78 @@ func CreateGroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
 		return
 	}
-	
 
 	c.JSON(http.StatusOK, gin.H{"message": "Group created", "group_id": group.ID.Hex()})
+}
+func GetGroupNameFromID(c *gin.Context) {
+	groupID := c.Query("group_id")
+	if groupID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing group ID"})
+		return
+	}
+
+	// Convert to ObjectID
+	objID, err := primitive.ObjectIDFromHex(groupID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID format"})
+		return
+	}
+
+	// Define a struct to hold result
+	var result struct {
+		Name string `bson:"name" json:"name"`
+	}
+
+	collection := database.GetCollection("groups") // adjust to your setup
+	err = collection.FindOne(context.TODO(), bson.M{"_id": objID}).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"group_name": result.Name})
+}
+func GetAllGroupsForUser(c *gin.Context) {
+	//
+	userID := c.Query("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing user_id"})
+		return
+	}
+
+	// Parse to ObjectID
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user_id format"})
+		return
+	}
+
+	// MongoDB collection
+	collection := database.GetCollection("groups")
+
+	// Filter: groups where user is a member
+	filter := bson.M{"members": objID}
+
+	// Optional: define what fields to return
+	projection := bson.M{"name": 1, "description": 1}
+
+	cursor, err := collection.Find(context.TODO(), filter, options.Find().SetProjection(projection))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch groups"})
+		return
+	}
+	defer cursor.Close(context.TODO())
+
+	// Struct for response
+	var groups []bson.M
+	if err := cursor.All(context.TODO(), &groups); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error parsing groups"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"groups": groups})
 }

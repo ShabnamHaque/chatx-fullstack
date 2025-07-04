@@ -16,13 +16,18 @@ import (
 
 func GetUserDetails(c *gin.Context) {
 	receiverID := c.Query("id") // Extract ID from URL
-	user, err := database.GetUserByID(receiverID)
+	receiverIDObj, err := primitive.ObjectIDFromHex(receiverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	user, err := database.GetUserByID(receiverIDObj)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"receiver": user.Username})
+	c.JSON(http.StatusOK, gin.H{"receiver_name": user.Username})
 }
 
 // DeleteContactHandler removes a contact from the user's contact list

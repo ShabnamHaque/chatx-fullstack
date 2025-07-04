@@ -47,13 +47,17 @@ async function openChat(contactId) {
     return;
   }
   localStorage.setItem("receiver_id", contactId);
+
+  const token = localStorage.getItem("token");
+
   try {
     const response = await fetch(
       `http://localhost:8080/api/chat/user?id=${encodeURIComponent(contactId)}`,
       {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
+          // "Content-Type": "application/json",
+          Authorization: token,
         },
       }
     );

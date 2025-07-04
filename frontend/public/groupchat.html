@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Group Chat</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+      .chat-container {
+        max-width: 800px;
+        margin: 20px auto;
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      #chatMessages {
+        height: 400px;
+        overflow-y: scroll;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 6px;
+        background: #fafafa;
+      }
+      .message {
+        padding: 8px;
+        margin-bottom: 6px;
+        border-radius: 5px;
+      }
+      .me {
+        background-color: #d1e7dd;
+        text-align: right;
+      }
+      .other {
+        background-color: #f8d7da;
+        text-align: left;
+      }
+      #chatInput {
+        width: 80%;
+        padding: 10px;
+        margin-right: 5px;
+      }
+      #sendBtn {
+        padding: 10px 15px;
+      }
+
+      .goBackButton {
+        position: fixed;
+        left: 10px;
+        top: 60px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000;
+        /* Ensures it stays above other elements */
+      }
+
+      .goBackButton:hover {
+        background: #2e5987;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <h2>Group Chat</h2>
+      <button class="goBackButton" onclick="goBackToMyGrps()">
+        ← My Groups
+      </button>
+
+      <div id="chatMessages"></div>
+      <input type="text" id="chatInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const groupId = urlParams.get("group_id");
+      const senderId = localStorage.getItem("user_id"); // set this on login
+      const token = localStorage.getItem("token"); // also set on login
+
+      const chatMessagesEl = document.getElementById("chatMessages");
+      const chatInput = document.getElementById("chatInput");
+      const sendBtn = document.getElementById("sendBtn");
+
+      async function loadGroupChatHistory(groupId) {
+        try {
+          const res = await fetch(`/api/chat/history?group_id=${groupId}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error("Failed to load messages");
+          }
+
+          const data = await res.json();
+          chatMessagesEl.innerHTML = "";
+
+          data.messages.forEach((msg) => {
+            appendMessage(msg);
+          });
+
+          chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        } catch (err) {
+          console.error("Error:", err);
+          alert("Could not load messages.");
+        }
+      }
+
+      function appendMessage(msg) {
+        const div = document.createElement("div");
+        div.classList.add("message");
+        div.classList.add(msg.sender_id === senderId ? "me" : "other");
+        div.innerText = `${msg.sender_name || msg.sender_id}: ${msg.content}`;
+        chatMessagesEl.appendChild(div);
+      }
+
+      async function sendMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        const res = await fetch("/api/chat/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sender_id: senderId,
+            group_id: groupId,
+            content: message,
+          }),
+        });
+
+        if (res.ok) {
+          chatInput.value = "";
+          await loadGroupChatMessages(groupId);
+        } else {
+          alert("Failed to send message.");
+        }
+      }
+
+      sendBtn.addEventListener("click", sendMessage);
+      chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendMessage();
+      });
+
+      // Load messages on page load
+      document.addEventListener("DOMContentLoaded", () => {
+        if (!groupId || !token) {
+          alert("Missing group or user authentication.");
+          return;
+        }
+
+        loadGroupChatMessages(groupId);
+        setInterval(() => loadGroupChatMessages(groupId), 5000); // auto-refresh every 5 sec
+      });
+      function goBackToMyGrps() {
+        localStorage.removeItem("group_id");
+        localStorage.removeItem("group_name");
+        window.location.href = "allGroups.html";
+      }
+    </script>
+  </body>
+</html>

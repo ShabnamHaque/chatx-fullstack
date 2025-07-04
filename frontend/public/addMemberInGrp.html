@@ -107,8 +107,6 @@
           showError("❌ " + err.message);
         }
       });
-
-      // 🔍 Fetch user ID from email
       async function getUserIdByEmail(email) {
         const res = await fetch(
           `http://localhost:8080/api/chat/users/by-email?email=${encodeURIComponent(
@@ -123,7 +121,7 @@
 
         return data.user_id;
       }
- 
+
       async function addUserToGroup(groupId, userId) {
         const res = await fetch(
           `http://localhost:8080/api/gc/members?group_id=${groupId}&user_id=${userId}`,
@@ -137,7 +135,7 @@
         if (!res.ok) {
           throw new Error(data.error || "Failed to add member");
         }
-
+        alert("Contact added to Grp success!");
         return data;
       }
 

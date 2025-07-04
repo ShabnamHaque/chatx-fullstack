@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -34,22 +33,20 @@ func InitChatHandler() {
 	m.HandleDisconnect(func(s *melody.Session) {
 		//receiver_id, _ := s.Get("receiver_id")
 		sender_id, _ := s.Get("sender_id")
-		log.Printf("🔴WebSocket disconnected|senderId :%s", sender_id)
+		log.Printf("🔴WebSocket disconnected|senderId :%s", sender_id) //executing
 	})
 }
 
-//	func HandleWebSocket(c *gin.Context) {
-//		err := m.HandleRequest(c.Writer, c.Request)
-//		if err != nil {
-//			log.Println("❌ WebSocket connection error:", err)
-//			c.JSON(http.StatusInternalServerError, gin.H{"error": "WebSocket connection failed"})
-//			return
-//		}
-//		log.Println("✅ WebSocket request handled successfully")
-//	}
-
 func HandleWebSocket(c *gin.Context) {
 	// Extract user ID from query parameters
+	tokenStr := c.Query("token")
+	_, err := utils.ValidateJWT(tokenStr)
+	if err != nil {
+		log.Println("❌ Invalid WebSocket token")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
 	senderID := c.Query("sender_id")
 	if senderID == "" {
 		log.Println("⚠️ Missing senderID in WebSocket connection")
@@ -57,24 +54,18 @@ func HandleWebSocket(c *gin.Context) {
 		return
 	}
 
-	err := m.HandleRequest(c.Writer, c.Request)
+	err = m.HandleRequest(c.Writer, c.Request)
 	if err != nil {
 		log.Println("❌ WebSocket connection error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "WebSocket connection failed"})
 		return
 	}
-	log.Printf("✅ WebSocket request handled successfully for sender:%s", senderID)
+	log.Printf("✅ WebSocket request handled successfully for sender:%s", senderID) //executing
 }
 func InitMessageHandler(c *gin.Context) {
-	token, err := utils.ExtractToken(c)
-	if err != nil {
-		log.Println("❌ Token extraction failed:", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "redirect": "/login"})
-		return
-	}
+	token := c.GetHeader("Authorization")
 	claims, err := utils.ValidateJWT(token)
 	if err != nil {
-		log.Println("❌ JWT validation failed:", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "redirect": "/login"})
 		return
 	}
@@ -134,62 +125,22 @@ func GetListOfUsersWithUnreadMessages(c *gin.Context) {
 		return
 	}
 
-	userID := claims.UserID // Keep as string
-
-	// Find unread messages where the user is the receiver
-	cursor, err := database.Messages.Find(context.TODO(), bson.M{
-		"receiver_id": userID, // No conversion needed
-		"unread":      true,
-	})
+	users, err := database.GetUnreadUsers(claims.UserID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unread messages"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unread message users"})
 		return
 	}
-	defer cursor.Close(context.TODO())
 
-	senderMap := make(map[primitive.ObjectID]bool)
-	for cursor.Next(context.TODO()) {
-		var msg models.Message
-		if err := cursor.Decode(&msg); err == nil {
-			senderMap[msg.SenderID] = true // Keep sender ID as string
-		}
-	}
-
-	var unreadSenderIDs []primitive.ObjectID
-	for senderID, err := range senderMap {
-		if !err {
-			unreadSenderIDs = append(unreadSenderIDs, senderID)
-		}
-	}
-
-	var unreadUsers []models.User
-	if len(unreadSenderIDs) > 0 {
-		cursor, err := database.Users.Find(context.TODO(), bson.M{"_id": bson.M{"$in": unreadSenderIDs}})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user details"})
-			return
-		}
-		defer cursor.Close(context.TODO())
-
-		for cursor.Next(context.TODO()) {
-			var user models.User
-			if err := cursor.Decode(&user); err == nil {
-				unreadUsers = append(unreadUsers, user)
-			}
-		}
-	}
-
-	// Prepare JSON response
 	var userList []bson.M
-	for _, u := range unreadUsers {
+	for _, u := range users {
 		userList = append(userList, bson.M{
-			"id":          u.ID.Hex(), // Convert ObjectID to string
+			"id":          u.ID.Hex(),
 			"username":    u.Username,
 			"email":       u.Email,
 			"profile_pic": u.ProfilePic,
 		})
 	}
-	log.Println("unread users ", len(userList))
+
 	c.JSON(http.StatusOK, gin.H{"users": userList})
 }
 func GetGroupChatHistory(c *gin.Context) {
@@ -232,18 +183,24 @@ func GetGroupChatHistory(c *gin.Context) {
 }
 
 func GetChatHistory(c *gin.Context) { //log.Println("Inside get chat history...")
-	token, err := utils.ExtractToken(c)
-	if err != nil {
-		log.Println("❌ Token extraction failed:", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "redirect": "/login"})
-		return
-	}
-	_, err = utils.ValidateJWT(token)
-	if err != nil {
-		log.Println("❌ JWT validation failed:", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "redirect": "/login"})
-		return
-	}
+	/*	token, err := utils.ExtractToken(c)
+		if err != nil {
+			log.Println("❌ Token extraction failed:", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "redirect": "/login"})
+			return
+		}
+		_, err = utils.ValidateJWT(token)
+		if err != nil {
+			log.Println("❌ JWT validation failed:", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "redirect": "/login"})
+			return
+		}
+	*/
+	// senderID, exists := c.Get("UserID")
+	// if !exists {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "UserID not found in context"})
+	// 	return
+	// }
 	senderID := c.Query("sender_id")
 	receiverID := c.Query("receiver_id")
 	if receiverID == "" {
@@ -256,15 +213,14 @@ func GetChatHistory(c *gin.Context) { //log.Println("Inside get chat history..."
 		c.JSON(http.StatusBadRequest, gin.H{"error": "senderID is required"})
 		return
 	}
-	//Mark messages as read if they were unread
-	err = database.MarkMessagesAsRead(senderID, receiverID)
+	senderID_objID, _ := primitive.ObjectIDFromHex(senderID)
+	receiverID_objID, _ := primitive.ObjectIDFromHex(receiverID)
+
+	err := database.MarkMessagesAsRead(senderID_objID, receiverID_objID)
 	if err != nil {
 		log.Println("⚠️ Failed to update read status:", err)
 	}
 	log.Printf("Updated read status btn %s and %s", senderID, receiverID)
-
-	senderID_objID, _ := primitive.ObjectIDFromHex(senderID)
-	receiverID_objID, _ := primitive.ObjectIDFromHex(receiverID)
 
 	messagesSlice, err := database.GetMessages(senderID_objID, receiverID_objID)
 	if err != nil {

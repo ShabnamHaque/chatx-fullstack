@@ -27,7 +27,7 @@ func main() {
 	defer database.DisconnectDB()
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:5500", "http://127.0.0.1:5500",
+		AllowOrigins: []string{"http://localhost:5050", "http://127.0.0.1:5050",
 			"https://shabnamhaque.github.io/chatx-fe/"},
 		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},

@@ -76,7 +76,7 @@ func GetMessages(senderID, receiverID primitive.ObjectID) ([]models.Message, err
 	}
 	return messages, nil
 }
-func MarkMessagesAsRead(receiverID, senderID string) error {
+func MarkMessagesAsRead(receiverID, senderID primitive.ObjectID) error {
 	filter := bson.M{
 		"sender_id":   senderID,
 		"receiver_id": receiverID,
@@ -95,6 +95,7 @@ func SaveMessageToDB(message models.Message) error {
 		"timestamp":    message.Timestamp,
 		"disappearing": message.Disappearing,
 		"unread":       true,
+		"is_group":     false,
 	}
 	if message.Disappearing {
 		doc["expires_at"] = time.Now().Add(24 * time.Hour) // Message expires in 24 hours
@@ -104,8 +105,6 @@ func SaveMessageToDB(message models.Message) error {
 }
 func GetGroupMessages(groupID primitive.ObjectID) ([]models.Message, error) {
 	filter := bson.M{"group_id": groupID}
-
-	// opts := options.Find().SetSort(bson.D{{"timestamp", 1}})
 
 	cursor, err := Messages.Find(context.Background(), filter)
 	if err != nil {
@@ -198,7 +197,6 @@ func DeleteContactByID(userID, contactID primitive.ObjectID) error {
 	if err != nil {
 		return err
 	}
-
 	if result.ModifiedCount == 0 {
 		return errors.New("contact not found or already removed")
 	}
@@ -206,28 +204,90 @@ func DeleteContactByID(userID, contactID primitive.ObjectID) error {
 	return nil
 }
 
-func GetUserByID(id string) (models.User, error) {
+func GetUserByID(objID primitive.ObjectID) (models.User, error) {
 	var user models.User
-
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return user, errors.New("invalid user ID")
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	err = Users.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
+	err := Users.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return user, errors.New("user not found")
 		}
 		return user, err
 	}
-
 	return user, nil
 }
 
+func GetUnreadUsers(receiverID string) ([]models.User, error) {
+	receiverObjID, err := primitive.ObjectIDFromHex(receiverID)
+	if err != nil {
+		return nil, errors.New("invalid receiver ID format")
+	}
+
+	cursor, err := Messages.Find(context.TODO(), bson.M{
+		"receiver_id": receiverObjID,
+		"unread":      true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+	senderMap := make(map[primitive.ObjectID]struct{})
+	for cursor.Next(context.TODO()) {
+		var msg models.Message
+		if err := cursor.Decode(&msg); err == nil {
+			senderMap[msg.SenderID] = struct{}{}
+		}
+	}
+	var senderIDs []primitive.ObjectID
+	for id := range senderMap {
+		senderIDs = append(senderIDs, id)
+	}
+	if len(senderIDs) == 0 {
+		return []models.User{}, nil
+	}
+	userCursor, err := Users.Find(context.TODO(), bson.M{
+		"_id": bson.M{"$in": senderIDs},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer userCursor.Close(context.TODO())
+
+	var users []models.User
+	for userCursor.Next(context.TODO()) {
+		var user models.User
+		if err := userCursor.Decode(&user); err == nil {
+			users = append(users, user)
+		}
+	}
+	return users, nil
+}
+
+func GetUsersByIDs(userIDs []primitive.ObjectID) ([]models.User, error) {
+	if len(userIDs) == 0 {
+		return []models.User{}, nil
+	}
+
+	cursor, err := Users.Find(context.TODO(), bson.M{
+		"_id": bson.M{"$in": userIDs},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+
+	var users []models.User
+	for cursor.Next(context.TODO()) {
+		var user models.User
+		if err := cursor.Decode(&user); err == nil {
+			users = append(users, user)
+		}
+	}
+
+	return users, nil
+}
 func DisconnectDB() {
 	if client != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

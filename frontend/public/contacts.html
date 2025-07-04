@@ -124,22 +124,6 @@
         font-size: 16px;
         margin-top: 15px;
       }
-      .logoutButton {
-        position: fixed;
-        left: 10px;
-        top: 10px;
-        background: #597899ee;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 14px;
-        z-index: 1000; /* Ensures it stays above other elements */
-      }
-      .logoutButton:hover {
-        background: #2e5987;
-      }
       .goBackButton {
         position: fixed;
         left: 10px;
@@ -156,6 +140,39 @@
       .goBackButton:hover {
         background: #2e5987;
       }
+      .allGroupsButton {
+        position: fixed;
+        left: 10px;
+        top: 100px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000; /* Ensures it stays above other elements */
+      }
+      .allGroupsButton:hover {
+        background: #2e5987;
+      }
+      .logoutButton {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000; /* Ensures it stays above other elements */
+      }
+      .logoutButton:hover {
+        background: #2e5987;
+      }
+
       .top-nav {
         width: 100%;
         padding: 10px;
@@ -189,30 +206,24 @@
     </div>
 
     <button class="logoutButton" onclick="logOut()">Log Out</button>
-    <button class="goBackButton" onclick="goBack()">HomePage</button>
+    <button class="allGroupsButton" onclick="allGroups()">My Groups</button>
+    <button class="goBackButton" onclick="goBack()">Go To Home</button>
 
     <div class="contacts-container">
       <h2>Your Contacts</h2>
       <ul id="contactsList" class="contacts-list"></ul>
       <p id="emptyMessage" class="empty-message">No contacts found.</p>
-      <a href="add_contact.html" class="add-contact-btn">➕ Add Contact</a>
+      <a href="add_contact.html" class="add-contact-btn">📝 Add New Contact</a>
     </div>
     <script>
-      // document
-      //   .getElementById("logoutButton")
-      //   .addEventListener("click", function () {
-      //     localStorage.removeItem("token");
-      //     localStorage.removeItem("user_id");
-      //     localStorage.removeItem("username");
-      //     window.location.href = "login.html";
-      //   });
-      // Load chat history on page load
-
       function logOut() {
         localStorage.removeItem("token");
         localStorage.removeItem("user_id");
         localStorage.removeItem("username");
         window.location.href = "login.html";
+      }
+      function allGroups() {
+        window.location.href = "allGroups.html";
       }
       function goBack() {
         window.location.href = "../index.html";
@@ -225,6 +236,7 @@
           return;
         }
         localStorage.setItem("receiver_id", contactId);
+        const token = localStorage.getItem("token");
         try {
           const response = await fetch(
             `http://localhost:8080/api/chat/user?id=${encodeURIComponent(
@@ -233,14 +245,15 @@
             {
               method: "GET",
               headers: {
-                "Content-Type": "application/json",
+                Authorization: token,
               },
             }
           );
           const data = await response.json();
-          console.log(data.receiver);
+          console.log(data.receiver_name);
           if (response.ok) {
-            localStorage.setItem("receiver_name", data.receiver); // Store receiver's name
+            console.info("receiver name is ", data.receiver_name);
+            localStorage.setItem("receiver_name", data.receiver_name); // Store receiver's name
           } else {
             console.error("Error fetching receiver name:", data.error);
             alert("Error fetching receiver's name. Please try again.");

@@ -2,34 +2,41 @@ package routes
 
 import (
 	"github.com/ShabnamHaque/chatx/backend/handlers"
+	"github.com/ShabnamHaque/chatx/backend/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRoutes(router *gin.Engine) {
 	handlers.InitChatHandler()
+	router.GET("/api/chat/ws", handlers.HandleWebSocket) // WebSocket session is established. - query param
+
 	authGroup := router.Group("/api/auth")
 	{
 		authGroup.POST("/register", handlers.RegisterHandler)
 		authGroup.POST("/login", handlers.LoginHandler)
 	}
 	chatGroup := router.Group("/api/chat")
+	chatGroup.Use(middleware.AuthMiddleware())
 	{
 		chatGroup.GET("/users/by-email", handlers.GetUserByEmail)
 		chatGroup.GET("/unread-users", handlers.GetListOfUsersWithUnreadMessages) // the new unread messages tab
-		chatGroup.GET("/ws", handlers.HandleWebSocket)                            // WebSocket session is established. - query param
-		chatGroup.POST("/send", handlers.InitMessageHandler)                      // alt to send texts - also for msg history retrieval
-		chatGroup.GET("/history", handlers.GetChatHistory)                        // Fetch chat history - query param
-		chatGroup.POST("/contacts", handlers.AddContact)                          // add new contact
-		chatGroup.GET("/contacts", handlers.GetContacts)                          // get all contacts
-		chatGroup.DELETE("/contacts", handlers.DeleteContactHandler)              // delete a contact - query param
-		chatGroup.GET("/user", handlers.GetUserDetails)                           // get user details - query param
+		//chatGroup.GET("/ws", handlers.HandleWebSocket)                            // WebSocket session is established. - query param
+		chatGroup.POST("/send", handlers.InitMessageHandler)         // alt to send texts - also for msg history retrieval
+		chatGroup.GET("/history", handlers.GetChatHistory)           // Fetch chat history - query param
+		chatGroup.POST("/contacts", handlers.AddContact)             // add new contact
+		chatGroup.GET("/contacts", handlers.GetContacts)             // get all contacts
+		chatGroup.DELETE("/contacts", handlers.DeleteContactHandler) // delete a contact - query param
+		chatGroup.GET("/user", handlers.GetUserDetails)              // get user details - query param
 	}
 	groupChatGrp := router.Group("/api/gc")
+	groupChatGrp.Use(middleware.AuthMiddleware())
 	{
 		groupChatGrp.POST("/create", handlers.CreateGroup)
 		groupChatGrp.GET("/members", handlers.GetMembers)
 		groupChatGrp.POST("/members", handlers.AddMember)
 		groupChatGrp.GET("/history", handlers.GetGroupChatHistory)
+		groupChatGrp.GET("/groupdetails", handlers.GetGroupNameFromID)
+		groupChatGrp.GET("/usergroups", handlers.GetAllGroupsForUser)
 	}
 }

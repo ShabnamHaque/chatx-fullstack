@@ -5,7 +5,6 @@
     <title>Group Chat List</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
         background: #f9f9f9;
         margin: 0;
         padding: 20px;
@@ -16,11 +15,28 @@
         color: #333;
       }
 
+      .top-actions {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .create-btn {
+        padding: 10px 16px;
+        font-size: 16px;
+        background-color: #1e3cd2eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .create-btn:hover {
+        background: #132581eb;
+      }
       .group-list {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 16px;
-        margin-top: 30px;
+        margin-top: 10px;
       }
 
       .group-card {
@@ -66,67 +82,239 @@
         background-color: #063084;
         color: white;
       }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .modal-content h2 {
+        margin-top: 0;
+      }
+
+      .modal-content input,
+      .modal-content textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 8px 0;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+      }
+
+      .modal-content button {
+        padding: 8px 16px;
+        margin-right: 8px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .submit-btn {
+        background-color: #273daaeb;
+        color: white;
+      }
+
+      .cancel-btn {
+        background-color: #ccc;
+      }
+
+      .goBackButton {
+        position: fixed;
+        left: 10px;
+        top: 60px;
+        background: #597899ee;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000;
+        /* Ensures it stays above other elements */
+      }
+
+      .goBackButton:hover {
+        background: #2e5987;
+      }
     </style>
   </head>
   <body>
-    <h1>Available Groups</h1>
-    <div class="group-list" id="groupList">
-      <!-- Groups will be rendered here -->
+    <div>
+      <h1>Available Groups</h1>
+      <div class="top-actions">
+        <button class="create-btn" onclick="openModal()">
+          Create New Group
+        </button>
+      </div>
+    </div>
+
+    <button class="goBackButton" onclick="goBack()">Go To My Contacts</button>
+    <div class="group-list" id="groupList"></div>
+
+    <!-- Modal -->
+    <div id="groupModal" class="modal">
+      <div class="modal-content">
+        <h2>Create Group</h2>
+        <input type="text" id="groupName" placeholder="Group Name" />
+        <textarea
+          id="groupDesc"
+          placeholder="Description (optional)"
+        ></textarea>
+        <div>
+          <button class="submit-btn" onclick="createGroup()">Create</button>
+          <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <script>
-      const mockGroups = [
-        {
-          id: "60a1b2c3d4e5f6a7b8c9d0e1",
-          name: "Study Group",
-          description: "CS and Algorithms discussions",
-        },
-        {
-          id: "60f1e2d3c4b5a6f7e8d9c0b1",
-          name: "Book Club",
-          description: "Monthly book readings and talks",
-        },
-      ];
-
       const groupListEl = document.getElementById("groupList");
+      const modal = document.getElementById("groupModal");
 
       function renderGroups(groups) {
-        groupListEl.innerHTML = ""; // clear first
+        groupListEl.innerHTML = "";
         groups.forEach((group) => {
           const card = document.createElement("div");
           card.className = "group-card";
-
           card.innerHTML = `
-          <div class="group-name">${group.name}</div>
-          <div class="group-description">${
-            group.description || "No description"
-          }</div>
-          <div class="group-actions">
-            <button class="chat-btn" onclick="enterChat('${
-              group.id
-            }')">Enter Chat</button>
-            <button class="add-btn" onclick="addToGroup('${
-              group.id
-            }')">Add to Group</button>
-          </div>
-        `;
-
+        <div class="group-name">${group.name}</div>
+        <div class="group-description">${
+          group.description || "No description"
+        }</div>
+        <div class="group-actions">
+          <button class="chat-btn" onclick="enterChat('${
+            group._id
+          }')">Enter Chat</button>
+          <button class="add-btn" onclick="addToGroup('${
+            group._id
+          }')">Add to Group</button>
+        </div>`;
           groupListEl.appendChild(card);
         });
       }
-
       function enterChat(groupId) {
-        alert("➡️ Entering chat for group ID: " + groupId);
-        window.location.href = `/chat.html?group_id=${groupId}`;
+        localStorage.setItem("group_id", groupId);
+        const token = localStorage.getItem("token");
+
+        fetch(`/api/gc/groupdetails?group_id=${groupId}`, {
+          method: "GET",
+          headers: {
+            Authorization: token,
+          },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.group_name) {
+              console.log("Group Name:", data.group_name);
+            }
+          });
+
+        localStorage.setItem("group_name", groupName);
+        window.location.href = `/groupchat.html?group_id=${groupId}`;
       }
 
       function addToGroup(groupId) {
-        alert("➕ Adding you to group ID: " + groupId);
-        fetch(`/api/group/members?group_id=${groupId}`, { method: "POST" });
+        alert("➕ Adding to group...");
+        fetch(`/api/group/members?group_id=${groupId}`, {
+          method: "POST",
+        });
       }
 
-      // Call initially
-      renderGroups(mockGroups);
+      function openModal() {
+        modal.style.display = "block";
+      }
+
+      function closeModal() {
+        modal.style.display = "none";
+        document.getElementById("groupName").value = "";
+        document.getElementById("groupDesc").value = "";
+      }
+
+      async function createGroup() {
+        const name = document.getElementById("groupName").value.trim();
+        const description = document.getElementById("groupDesc").value.trim();
+        const token = localStorage.getItem("token");
+
+        if (!name) return alert("Group name is required");
+
+        try {
+          const res = await fetch("/api/gc/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: token,
+            },
+            body: JSON.stringify({ name, description }),
+          });
+
+          if (!res.ok) throw new Error("Failed to create group");
+
+          const data = await res.json();
+          mockGroups.push({ id: data.group_id, name, description });
+          renderGroups(mockGroups);
+          closeModal();
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      }
+
+      window.onclick = function (e) {
+        if (e.target == modal) {
+          closeModal();
+        }
+      };
+      function goBack() {
+        window.location.href = "../public/contacts.html";
+      }
+
+      async function loadGroups() {
+        const userId = localStorage.getItem("user_id");
+        const token = localStorage.getItem("token");
+
+        if (!userId || !token) {
+          alert("User not authenticated");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `http://localhost:8080/api/gc/usergroups?user_id=${userId}`,
+            {
+              headers: { Authorization: token },
+            }
+          );
+          const data = await response.json();
+          if (data.groups) {
+            renderGroups(data.groups);
+          } else {
+            groupListEl.innerHTML = "<p>No groups found.</p>";
+          }
+        } catch (error) {
+          console.error("Error fetching groups:", error);
+          groupListEl.innerHTML = "<p>Failed to load groups.</p>";
+        }
+      }
+
+      // Load groups when page loads
+      window.onload = loadGroups;
     </script>
   </body>
 </html>
