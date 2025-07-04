@@ -93,12 +93,15 @@
 
       async function loadGroupChatHistory(groupId) {
         try {
-          const res = await fetch(`/api/chat/history?group_id=${groupId}`, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const res = await fetch(
+            `http://localhost:8080/api/chat/history?group_id=${groupId}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: token,
+              },
+            }
+          );
 
           if (!res.ok) {
             throw new Error("Failed to load messages");

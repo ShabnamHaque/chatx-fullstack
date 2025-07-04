@@ -173,9 +173,9 @@
     <div id="groupModal" class="modal">
       <div class="modal-content">
         <h2>Create Group</h2>
-        <input type="text" id="groupName" placeholder="Group Name" />
+        <input type="text" id="group_name" placeholder="Group Name" />
         <textarea
-          id="groupDesc"
+          id="group_desc"
           placeholder="Description (optional)"
         ></textarea>
         <div>
@@ -186,6 +186,9 @@
     </div>
 
     <script>
+      const userId = localStorage.getItem("user_id");
+
+      const token = localStorage.getItem("token");
       const groupListEl = document.getElementById("groupList");
       const modal = document.getElementById("groupModal");
 
@@ -212,9 +215,8 @@
       }
       function enterChat(groupId) {
         localStorage.setItem("group_id", groupId);
-        const token = localStorage.getItem("token");
 
-        fetch(`/api/gc/groupdetails?group_id=${groupId}`, {
+        fetch(`http://localhost:8080/api/gc/groupdetails?group_id=${groupId}`, {
           method: "GET",
           headers: {
             Authorization: token,
@@ -227,13 +229,13 @@
             }
           });
 
-        localStorage.setItem("group_name", groupName);
+        localStorage.setItem("group_name", group_name);
         window.location.href = `/groupchat.html?group_id=${groupId}`;
       }
 
       function addToGroup(groupId) {
-        alert("➕ Adding to group...");
-        fetch(`/api/group/members?group_id=${groupId}`, {
+        alert(" Adding to group...");
+        fetch(`http://localhost:8080/api/group/members?group_id=${groupId}`, {
           method: "POST",
         });
       }
@@ -244,33 +246,33 @@
 
       function closeModal() {
         modal.style.display = "none";
-        document.getElementById("groupName").value = "";
-        document.getElementById("groupDesc").value = "";
+        document.getElementById("group_name").value = "";
+        document.getElementById("group_desc").value = "";
       }
 
       async function createGroup() {
-        const name = document.getElementById("groupName").value.trim();
-        const description = document.getElementById("groupDesc").value.trim();
-        const token = localStorage.getItem("token");
+        const name = document.getElementById("group_name").value.trim();
+        const description = document.getElementById("group_desc").value.trim();
 
         if (!name) return alert("Group name is required");
 
         try {
-          const res = await fetch("/api/gc/create", {
+          const res = await fetch("http://localhost:8080/api/gc/create", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: token,
             },
-            body: JSON.stringify({ name, description }),
+            body: JSON.stringify({ name, description, userId }),
           });
-
-          if (!res.ok) throw new Error("Failed to create group");
-
           const data = await res.json();
-          mockGroups.push({ id: data.group_id, name, description });
-          renderGroups(mockGroups);
-          closeModal();
+          // if (!res.ok) throw new Error(data.error || "Failed to create group");
+          if (!res.ok) {
+            const text = await res.text(); // log raw error
+            throw new Error("Failed to create group: " + text);
+          }
+          // Optional: await res.json(); // only if you need to handle the response
+          location.reload(); // reload the page to reflect the newly created group
         } catch (err) {
           alert("Error: " + err.message);
         }
@@ -286,7 +288,6 @@
       }
 
       async function loadGroups() {
-        const userId = localStorage.getItem("user_id");
         const token = localStorage.getItem("token");
 
         if (!userId || !token) {

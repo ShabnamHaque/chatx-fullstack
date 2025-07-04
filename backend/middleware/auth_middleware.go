@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/ShabnamHaque/chatx/backend/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,7 +24,15 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		c.Set("UserID", claims.UserID)
+
+		userID, err := primitive.ObjectIDFromHex(claims.UserID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID format in token"})
+			c.Abort()
+			return
+		}
+
+		c.Set("UserID", userID)
 		c.Next()
 	}
 }

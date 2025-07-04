@@ -16,4 +16,8 @@ type Group struct {
 	IsPrivate   bool                 `bson:"is_private" json:"is_private"`
 }
 
-//private group - only the admin can add people
+// private group - only the admin can add people
+type CreateGroupRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"` // Optional
+}

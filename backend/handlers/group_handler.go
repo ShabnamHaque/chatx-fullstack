@@ -16,7 +16,7 @@ import (
 
 var GroupCollection *mongo.Collection = database.Groups
 
-func AddMember(c *gin.Context) {
+func AddMemberToGroup(c *gin.Context) {
 	groupID := c.Query("group_id")
 	userID := c.Query("user_id")
 
@@ -33,15 +33,13 @@ func AddMember(c *gin.Context) {
 		return
 	}
 
-	filter := bson.M{"_id": groupObjID}
-	update := bson.M{"$addToSet": bson.M{"members": userObjID}}
-
-	_, err = GroupCollection.UpdateOne(context.Background(), filter, update)
-	if err != nil {
+	if err := database.AddMemberToGroup(userObjID, groupObjID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add member"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Member added"})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Member added", "user_id": userID})
+
 }
 func GetMembers(c *gin.Context) {
 	groupID := c.Query("group_id")
@@ -66,22 +64,47 @@ func GetMembers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"members": group.MemberIDs})
 }
 func CreateGroup(c *gin.Context) {
-	var group models.Group
-	if err := c.BindJSON(&group); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group data"})
+	var req models.CreateGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
 	}
 
-	group.ID = primitive.NewObjectID()
-	group.CreatedAt = time.Now()
+	userIDRaw, exists := c.Get("UserID")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "UserID missing from context"})
+		return
+	}
 
-	_, err := GroupCollection.InsertOne(context.Background(), group)
+	userID, ok := userIDRaw.(primitive.ObjectID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid UserID type"})
+		return
+	}
+
+	groupID := primitive.NewObjectID()
+
+	group := models.Group{
+		ID:          groupID,
+		Name:        req.Name,
+		Description: req.Description,
+		AdminID:     userID,
+		MemberIDs:   []primitive.ObjectID{}, // optionally empty, let AddMember handle it
+		CreatedAt:   time.Now(),
+	}
+
+	_, err := database.Groups.InsertOne(context.Background(), group)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group", "details": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Group created", "group_id": group.ID.Hex()})
+	if err := database.AddMemberToGroup(userID, groupID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add creator to group", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"group_id": groupID.Hex()})
 }
 func GetGroupNameFromID(c *gin.Context) {
 	groupID := c.Query("group_id")

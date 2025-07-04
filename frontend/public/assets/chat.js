@@ -8,11 +8,13 @@ const token = localStorage.getItem("token");
 const receiver_name = localStorage.getItem("receiver_name"); // Get receiver name
 let isDisappearing = false; // Default OFF
 let socket;
+
 function goBackToContacts() {
   localStorage.removeItem("receiver_id");
   localStorage.removeItem("receiver_name");
   window.location.href = "contacts.html";
 }
+
 async function sendMessage() {
   const messageInput = document.getElementById("messageInput").value;
   const messageData = {

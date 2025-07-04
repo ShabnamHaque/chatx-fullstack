@@ -133,49 +133,21 @@ func SaveGroupMessagesToDB(message models.Message) error {
 	_, err := Messages.InsertOne(context.TODO(), doc)
 	return err
 }
-func AddMemberToGroup(user models.User, groupID primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func AddMemberToGroup(userID, groupID primitive.ObjectID) error {
 
-	groupColl := Groups
-	userColl := Users
-
-	newMember := models.User{
-		ID:       user.ID,
-		Username: user.Username,
+	filter := bson.M{"_id": groupID}
+	update := bson.M{
+		"$addToSet": bson.M{"members": userID},
+		"$set":      bson.M{"updatedAt": time.Now()},
 	}
 
-	// ✅ 1. Add user to group members if not already present
-	groupFilter := bson.M{
-		"_id":         groupID,
-		"members._id": bson.M{"$ne": user.ID}, // not already a member
-	}
-	groupUpdate := bson.M{
-		"$push": bson.M{"members": newMember},
-	}
-
-	groupResult, err := groupColl.UpdateOne(ctx, groupFilter, groupUpdate)
+	res, err := Groups.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		return err
 	}
 
-	// Optional: fail if group was not found or user was already a member
-	if groupResult.MatchedCount == 0 {
-		return errors.New("group not found or user already a member")
-	}
-
-	// ✅ 2. Add groupID to user.Groups array if not already added
-	userFilter := bson.M{
-		"_id":    user.ID,
-		"groups": bson.M{"$ne": groupID}, // not already added
-	}
-	userUpdate := bson.M{
-		"$push": bson.M{"groups": groupID},
-	}
-
-	_, err = userColl.UpdateOne(ctx, userFilter, userUpdate)
-	if err != nil {
-		return err
+	if res.MatchedCount == 0 {
+		return errors.New("group not found")
 	}
 
 	return nil

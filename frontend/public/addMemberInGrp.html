@@ -127,6 +127,9 @@
           `http://localhost:8080/api/gc/members?group_id=${groupId}&user_id=${userId}`,
           {
             method: "POST",
+            headers: {
+              Authorization: token,
+            },
           }
         );
 
