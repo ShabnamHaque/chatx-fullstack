@@ -17,5 +17,6 @@ This is a simple chat application built with Golang for the backend and vanilla 
   - MongoDB for data storage
 - **Frontend**: HTML, CSS, JavaScript
   - WebSocket integration on the client-side
-  - 
+  - localStorage for caching session Data
+    
 ![Screenshot 2025-03-23 085938](https://github.com/user-attachments/assets/d88343f4-07aa-48d7-8296-594263c4e3cd)
