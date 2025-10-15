@@ -85,9 +85,7 @@
     <script>
       const form = document.getElementById("addMemberForm");
       const statusMsg = document.getElementById("statusMsg");
-
-      // 👇 Get group_id from query string
-      const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
       const groupId = urlParams.get("group_id");
 
       form.addEventListener("submit", async (e) => {
@@ -95,7 +93,7 @@
         const email = document.getElementById("email").value;
 
         if (!groupId) {
-          showError("❌ Missing group_id in URL");
+          showError("Missing group_id in URL");
           return;
         }
 
@@ -104,7 +102,7 @@
           await addUserToGroup(groupId, userId);
           showSuccess("✅ Member added successfully!");
         } catch (err) {
-          showError("❌ " + err.message);
+          showError(err.message);
         }
       });
       async function getUserIdByEmail(email) {
@@ -138,7 +136,7 @@
         if (!res.ok) {
           throw new Error(data.error || "Failed to add member");
         }
-        alert("Contact added to Grp success!");
+        alert("Contact added to Grp-success!");
         return data;
       }
 

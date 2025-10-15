@@ -233,12 +233,42 @@
         window.location.href = `/groupchat.html?group_id=${groupId}`;
       }
 
-      function addToGroup(groupId) {
-        alert(" Adding to group...");
-        fetch(`http://localhost:8080/api/group/members?group_id=${groupId}`, {
-          method: "POST",
-        });
-      }
+      // function addToGroup(groupId) {
+      //   alert(" Adding to group...");
+      //   fetch(`http://localhost:8080/api/gc/members?group_id=${groupId}`, {
+      //     method: "POST",
+      //   });
+      // }
+       
+function addToGroup(groupId) {
+  const email = prompt("Enter email to add to the group:");
+
+  if (!email) {
+    alert("Email is required.");
+    return;
+  }
+
+  fetch(`http://localhost:8080/api/gc/members?group_id=${groupId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email: email })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("Failed to add user.");
+    return response.json();
+  })
+  .then(data => {
+    alert("User added to group!");
+    console.log(data);
+  })
+  .catch(error => {
+    alert("Error: " + error.message);
+  });
+}
+
+
 
       function openModal() {
         modal.style.display = "block";
