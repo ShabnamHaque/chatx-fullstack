@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type Group struct {
+type Room struct {
 	ID          primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
 	Name        string               `bson:"name" json:"name"`
 	AdminID     primitive.ObjectID   `bson:"admin_id" json:"admin_id"`
@@ -17,7 +17,7 @@ type Group struct {
 }
 
 // private group - only the admin can add people
-type CreateGroupRequest struct {
+type CreateRoomRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"` // Optional
 }

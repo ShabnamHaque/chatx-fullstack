@@ -20,7 +20,7 @@ var client *mongo.Client
 var DB *mongo.Database
 var Users *mongo.Collection
 var Messages *mongo.Collection
-var Groups *mongo.Collection
+var Rooms *mongo.Collection
 
 func ConnectDB() {
 	mongoURI := os.Getenv("MONGO_URI")
@@ -44,7 +44,7 @@ func ConnectDB() {
 	DB = client.Database(dbName)
 	Users = DB.Collection("users")
 	Messages = DB.Collection("messages")
-	Groups = DB.Collection("groups")
+	Rooms = DB.Collection("rooms")
 	indexModel := mongo.IndexModel{
 		Keys:    bson.M{"expires_at": 1},
 		Options: options.Index().SetExpireAfterSeconds(0), // TTL Index
@@ -133,15 +133,15 @@ func SaveGroupMessagesToDB(message models.Message) error {
 	_, err := Messages.InsertOne(context.TODO(), doc)
 	return err
 }
-func AddMemberToGroup(userID, groupID primitive.ObjectID) error {
+func AddMemberToRoom(userID, roomID primitive.ObjectID) error {
 
-	filter := bson.M{"_id": groupID}
+	filter := bson.M{"_id": roomID}
 	update := bson.M{
 		"$addToSet": bson.M{"members": userID},
 		"$set":      bson.M{"updatedAt": time.Now()},
 	}
 
-	res, err := Groups.UpdateOne(context.Background(), filter, update)
+	res, err := Rooms.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		return err
 	}
@@ -172,10 +172,22 @@ func DeleteContactByID(userID, contactID primitive.ObjectID) error {
 	if result.ModifiedCount == 0 {
 		return errors.New("contact not found or already removed")
 	}
-
 	return nil
 }
+func GetUserByEmail(email string) (models.User, error) {
+	var user models.User
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := Users.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return user, errors.New("user not found")
+		}
+		return user, err
+	}
+	return user, nil
+}
 func GetUserByID(objID primitive.ObjectID) (models.User, error) {
 	var user models.User
 

@@ -20,15 +20,14 @@ func main() {
 	// Check if MONGO_URI is loaded
 	// mongoURI := os.Getenv("MONGO_URI")
 	// if mongoURI == "" {
-	// 	log.Fatal("❌ MONGO_URI is not set")
+	// 	log.Fatal("MONGO_URI is not set")
 	// }
 	//log.Print(mongoURI)
 	database.ConnectDB()
 	defer database.DisconnectDB()
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:5050", "http://127.0.0.1:5050",
-			"https://shabnamhaque.github.io/chatx-fe/"},
+		AllowOrigins:     []string{"http://localhost:5050", "http://127.0.0.1:5050"},
 		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,

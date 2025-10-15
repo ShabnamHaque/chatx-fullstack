@@ -31,10 +31,10 @@ func SetupRoutes(router *gin.Engine) {
 	groupChatGrp := router.Group("/api/gc")
 	groupChatGrp.Use(middleware.AuthMiddleware())
 	{
-		groupChatGrp.POST("/create", handlers.CreateGroup)
+		groupChatGrp.POST("/create", handlers.CreateRoom)
 		groupChatGrp.GET("/members", handlers.GetMembers)
-		groupChatGrp.POST("/members", handlers.AddMemberToGroup)
-		groupChatGrp.GET("/history", handlers.GetGroupChatHistory)
+		groupChatGrp.POST("/members", handlers.AddMemberToRoom)
+		groupChatGrp.GET("/history", handlers.GetRoomChatHistory)
 		groupChatGrp.GET("/groupdetails", handlers.GetGroupNameFromID)
 		groupChatGrp.GET("/usergroups", handlers.GetAllGroupsForUser)
 	}

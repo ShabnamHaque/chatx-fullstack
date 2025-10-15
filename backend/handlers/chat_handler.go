@@ -23,15 +23,12 @@ func InitChatHandler() {
 	m = melody.New() // Initialize WebSocket server
 
 	m.HandleConnect(func(s *melody.Session) {
-		//	receiver_id := s.Request.URL.Query().Get("receiver_id")
-		sender_id := s.Request.URL.Query().Get("sender_id") //just store who is connected
-
-		s.Set("sender_id", sender_id) //how the ws conn be uniquely identified.
+		sender_id := s.Request.URL.Query().Get("sender_id") // store who is connected
+		s.Set("sender_id", sender_id)                       //how the ws conn be uniquely identified.
 		log.Printf("🟢 WebSocket connected | Sender: %s", sender_id)
 	})
 
 	m.HandleDisconnect(func(s *melody.Session) {
-		//receiver_id, _ := s.Get("receiver_id")
 		sender_id, _ := s.Get("sender_id")
 		log.Printf("🔴WebSocket disconnected|senderId :%s", sender_id) //executing
 	})
@@ -143,7 +140,7 @@ func GetListOfUsersWithUnreadMessages(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"users": userList})
 }
-func GetGroupChatHistory(c *gin.Context) {
+func GetRoomChatHistory(c *gin.Context) {
 	token, err := utils.ExtractToken(c)
 	if err != nil {
 		log.Println("❌ Token extraction failed:", err)
@@ -182,25 +179,9 @@ func GetGroupChatHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
 
-func GetChatHistory(c *gin.Context) { //log.Println("Inside get chat history...")
-	/*	token, err := utils.ExtractToken(c)
-		if err != nil {
-			log.Println("❌ Token extraction failed:", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "redirect": "/login"})
-			return
-		}
-		_, err = utils.ValidateJWT(token)
-		if err != nil {
-			log.Println("❌ JWT validation failed:", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "redirect": "/login"})
-			return
-		}
-	*/
-	// senderID, exists := c.Get("UserID")
-	// if !exists {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "UserID not found in context"})
-	// 	return
-	// }
+func GetChatHistory(c *gin.Context) {
+	//	log.Println("Inside get chat history...")
+
 	senderID := c.Query("sender_id")
 	receiverID := c.Query("receiver_id")
 	if receiverID == "" {
@@ -224,7 +205,7 @@ func GetChatHistory(c *gin.Context) { //log.Println("Inside get chat history..."
 
 	messagesSlice, err := database.GetMessages(senderID_objID, receiverID_objID)
 	if err != nil {
-		log.Println("❌ Failed to fetch chat history: ", err)
+		log.Println("! Failed to fetch chat history: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve messages"})
 		return
 	}
